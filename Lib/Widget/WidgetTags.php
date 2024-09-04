@@ -87,7 +87,7 @@ class WidgetTags extends BaseWidget
     public function processFormData(&$model, $request): void
     {
         $value = $request->request->get($this->fieldname, '');
-        $model->{$this->fieldname} = ('' === $value) ? null : $value;
+        $model->{$this->fieldname} = ('' === $value) ? null : implode(',', $value);
     }
 
     /**
@@ -104,7 +104,6 @@ class WidgetTags extends BaseWidget
      */
     public function setValuesFromArray(array $items, bool $translate = false, bool $addEmpty = false, string $col1 = 'value', string $col2 = 'title'): void
     {
-        $this->values = $addEmpty ? [['value' => null, 'title' => '------']] : [];
         foreach ($items as $item) {
             if (false === is_array($item)) {
                 $this->values[] = ['value' => $item, 'title' => $item];
@@ -128,7 +127,6 @@ class WidgetTags extends BaseWidget
 
     public function setValuesFromArrayKeys(array $values, bool $translate = false, bool $addEmpty = false): void
     {
-        $this->values = $addEmpty ? [['value' => null, 'title' => '------']] : [];
         foreach ($values as $key => $value) {
             $this->values[] = [
                 'value' => $key,
@@ -177,7 +175,7 @@ class WidgetTags extends BaseWidget
     private function applyTranslations(): void
     {
         foreach ($this->values as $key => $value) {
-            if (empty($value['title']) || '------' === $value['title']) {
+            if (empty($value['title'])) {
                 continue;
             }
 
@@ -188,6 +186,8 @@ class WidgetTags extends BaseWidget
     protected function assets(): void
     {
         AssetManager::addJs(FS_ROUTE . '/Dinamic/Assets/JS/WidgetSelect.js');
+        AssetManager::addCss('https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css');
+        AssetManager::addJs('https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js');
     }
 
     /**
@@ -208,9 +208,9 @@ class WidgetTags extends BaseWidget
                 . '<input type="text" value="' . $this->show() . '" class="' . $class . '" readonly/>';
         }
 
-        $html = '<select'
-            . ' name="' . $this->fieldname . '"'
-            . ' id="' . $this->id . '"'
+        $html = '<select multiple'
+            . ' name="' . $this->fieldname . '[]"'
+            . ' id="WidgetTagsInput-' . $this->id . '"'
             . ' class="' . $class . '"'
             . $this->inputHtmlExtraParams()
             . ' parent="' . $this->parent . '"'
@@ -223,16 +223,27 @@ class WidgetTags extends BaseWidget
             . ' data-limit="' . $this->limit . '"'
             . '>';
 
+        $html .= '
+            <script>
+                document.addEventListener("DOMContentLoaded", () => {
+                    new Choices("#WidgetTagsInput-' . $this->id . '", {
+                        removeItemButton: true,
+                        searchResultLimit: -1,
+                        fuseOptions: {
+                          minMatchCharLength: 2
+                        },                       
+                    });
+                });
+            </script>';
+
         $found = false;
-        $selected = false;
         foreach ($this->values as $option) {
             $title = empty($option['title']) ? $option['value'] : $option['title'];
 
             // don't use strict comparison (===)
-            if ($option['value'] == $this->value && !$selected) {
+            if (!empty($this->value) && in_array($option['value'], explode(',', $this->value))) {
                 $found = true;
                 $html .= '<option value="' . $option['value'] . '" selected>' . $title . '</option>';
-                $selected = true;
                 continue;
             }
 
@@ -265,7 +276,7 @@ class WidgetTags extends BaseWidget
         $this->limit = $child['limit'] ?? CodeModel::ALL_LIMIT;
         if ($loadData && $this->source) {
             static::$codeModel::setLimit($this->limit);
-            $values = static::$codeModel->all($this->source, $this->fieldcode, $this->fieldtitle, !$this->required);
+            $values = static::$codeModel->all($this->source, $this->fieldcode, $this->fieldtitle, false);
             $this->setValuesFromCodeModel($values, $this->translate);
         }
     }
