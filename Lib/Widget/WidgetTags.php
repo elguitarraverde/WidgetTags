@@ -114,7 +114,7 @@ class WidgetTags extends BaseWidget
 
             if (isset($item[$col1])) {
                 $this->values[] = [
-                    'value' => $item[$col1],
+                    'value' => $item[$col2] ?? $item[$col1],
                     'title' => $item[$col2] ?? $item[$col1],
                 ];
             }
@@ -129,7 +129,7 @@ class WidgetTags extends BaseWidget
     {
         foreach ($values as $key => $value) {
             $this->values[] = [
-                'value' => $key,
+                'value' => $value,
                 'title' => $value,
             ];
         }
@@ -150,7 +150,7 @@ class WidgetTags extends BaseWidget
         $this->values = [];
         foreach ($rows as $codeModel) {
             $this->values[] = [
-                'value' => $codeModel->code,
+                'value' => $codeModel->description,
                 'title' => $codeModel->description,
             ];
         }
@@ -288,26 +288,11 @@ class WidgetTags extends BaseWidget
             return '-';
         }
 
-        $selected = null;
-        foreach ($this->values as $option) {
-            // don't use strict comparation (===)
-            if ($option['value'] == $this->value) {
-                $selected = $option['title'];
-            }
+        $html = '';
+        foreach (explode(',', $this->value) as $value) {
+            $html .= '<span class="badge badge-pill badge-primary mx-1 p-2" style="background-color: #005f75;">' . $value . '</span>';
         }
 
-        if (null === $selected) {
-            // value is not in $this->values
-            $selected = $this->source ?
-                static::$codeModel->getDescription($this->source, $this->fieldcode, $this->value, $this->fieldtitle) :
-                $this->value;
-
-            $this->values[] = [
-                'value' => $this->value,
-                'title' => $selected,
-            ];
-        }
-
-        return $selected;
+        return $html;
     }
 }
